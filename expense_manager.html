@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#4f46e5">
+    
+    <title>Expense & Budget App</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --bg: #f1f5f9;
+            --card: #ffffff;
+            --text: #1e293b;
+            --border: #e2e8f0;
+            --danger: #ef4444;
+            --success: #10b981;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+            padding-bottom: 90px;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* --- Header --- */
+        header {
+            background: var(--primary);
+            color: white;
+            padding: 15px 20px;
+            padding-top: env(safe-area-inset-top, 20px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3);
+        }
+        header h1 { margin: 0; font-size: 1.1rem; font-weight: 600; }
+        .icon-btn { background: none; border: none; color: white; font-size: 1.1rem; cursor: pointer; padding: 8px; }
+
+        /* --- Budget Panel (New Feature) --- */
+        .budget-panel {
+            background: linear-gradient(135deg, #4f46e5, #6366f1);
+            color: white;
+            margin: 20px;
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px -5px rgba(79, 70, 229, 0.4);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .budget-info h4 { margin: 0 0 5px 0; font-weight: 400; font-size: 0.9rem; opacity: 0.9; }
+        .budget-info .big-amount { font-size: 1.8rem; font-weight: 700; }
+        .budget-actions { text-align: right; }
+        .budget-sub { font-size: 0.85rem; opacity: 0.9; margin-top: 5px; }
+        .btn-set-budget {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            margin-bottom: 5px;
+        }
+
+        /* --- Dashboard Stats --- */
+        .dashboard-scroller {
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            padding: 0 20px 20px 20px;
+            scrollbar-width: none;
+        }
+        .dashboard-scroller::-webkit-scrollbar { display: none; }
+
+        .stat-card {
+            background: var(--card);
+            min-width: 130px;
+            padding: 12px;
+            border-radius: 12px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            border: 1px solid var(--border);
+        }
+        .stat-card span { font-size: 0.7rem; color: #64748b; text-transform: uppercase; font-weight: 600; }
+        .stat-card strong { font-size: 1.1rem; color: var(--text); margin-top: 4px; }
+        
+        /* --- List --- */
+        .section-title { padding: 0 20px 10px 20px; margin: 0; font-size: 0.95rem; color: #64748b; font-weight: 600; }
+        .transaction-list { padding: 0 20px; }
+        .transaction-item {
+            background: var(--card);
+            margin-bottom: 12px;
+            padding: 15px;
+            border-radius: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            border: 1px solid transparent;
+        }
+        .t-info h4 { margin: 0 0 3px 0; font-size: 0.95rem; }
+        .t-info p { margin: 0; font-size: 0.75rem; color: #64748b; }
+        .t-amount { font-weight: 700; font-size: 1rem; color: var(--text); }
+        .t-actions { display: flex; gap: 8px; margin-left: 12px;}
+        
+        .btn-icon-small { width: 28px; height: 28px; border-radius: 50%; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .btn-edit { background: #eff6ff; color: var(--primary); }
+        .btn-del { background: #fef2f2; color: var(--danger); }
+
+        /* --- Floating Button --- */
+        .fab {
+            position: fixed;
+            bottom: 25px;
+            right: 25px;
+            width: 55px;
+            height: 55px;
+            background-color: var(--primary);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 22px;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
+            cursor: pointer;
+            z-index: 500;
+            border: none;
+        }
+
+        /* --- Modal --- */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            z-index: 1000;
+            align-items: flex-end;
+        }
+        .modal.active { display: flex; }
+        .modal-content {
+            background: white;
+            width: 100%;
+            border-radius: 20px 20px 0 0;
+            padding: 25px;
+            animation: slideUp 0.3s ease;
+        }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 6px; font-weight: 500; font-size: 0.85rem; color: #64748b; }
+        .form-group input, .form-group select {
+            width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px;
+            font-size: 16px; background: #f8fafc; outline: none; -webkit-appearance: none;
+        }
+        .form-group input:focus { border-color: var(--primary); background: #fff; }
+        
+        .btn-save { background: var(--primary); color: white; width: 100%; padding: 15px; border: none; border-radius: 10px; font-size: 1rem; font-weight: 600; margin-top: 10px; }
+        .btn-close { background: transparent; color: #64748b; width: 100%; padding: 15px; border: none; margin-top: 5px; }
+
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Expense Tracker</h1>
+    <div>
+        <button class="icon-btn" onclick="backupData()"><i class="fas fa-save"></i></button>
+        <button class="icon-btn" onclick="triggerImport()"><i class="fas fa-upload"></i></button>
+        <button class="icon-btn" onclick="generatePDF()"><i class="fas fa-file-pdf"></i></button>
+    </div>
+</header>
+<input type="file" id="fileInput" style="display: none;" onchange="importData(this)">
+
+<div class="budget-panel">
+    <div class="budget-info">
+        <h4>Monthly Balance</h4>
+        <div class="big-amount" id="remainingBalance">৳0</div>
+        <div class="budget-sub" id="budgetDisplay">Budget: ৳0</div>
+    </div>
+    <div class="budget-actions">
+        <button class="btn-set-budget" onclick="setMonthlyBudget()">
+            <i class="fas fa-pen"></i> Set Budget
+        </button>
+        <div class="budget-sub">Spent: <span id="monthSpentDisplay">৳0</span></div>
+    </div>
+</div>
+
+<div class="dashboard-scroller">
+    <div class="stat-card">
+        <span>Today</span>
+        <strong id="dailyTotal">৳0</strong>
+    </div>
+    <div class="stat-card">
+        <span>This Week</span>
+        <strong id="weeklyTotal">৳0</strong>
+    </div>
+    <div class="stat-card">
+        <span>Yearly</span>
+        <strong id="yearlyTotal">৳0</strong>
+    </div>
+</div>
+
+<h3 class="section-title">Recent Transactions</h3>
+
+<div class="transaction-list" id="listContainer">
+    </div>
+
+<button class="fab" onclick="openModal()">
+    <i class="fas fa-plus"></i>
+</button>
+
+<div class="modal" id="expenseModal">
+    <div class="modal-content">
+        <h2 style="margin-top:0; margin-bottom: 20px;">Add Expense</h2>
+        <input type="hidden" id="editIndex">
+        
+        <div class="form-group">
+            <label>Date</label>
+            <input type="date" id="dateInput">
+        </div>
+
+        <div class="form-group">
+            <label>Amount (BDT)</label>
+            <input type="number" id="amountInput" placeholder="0.00">
+        </div>
+
+        <div style="display:flex; gap:10px;">
+            <div class="form-group" style="flex:1;">
+                <label>Category</label>
+                <select id="categoryInput">
+                    <option value="Food">Food</option>
+                    <option value="Transport">Transport</option>
+                    <option value="Bills">Bills</option>
+                    <option value="Shopping">Shopping</option>
+                    <option value="Health">Health</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+            <div class="form-group" style="flex:1;">
+                <label>Method</label>
+                <select id="methodInput">
+                    <option value="Cash">Cash</option>
+                    <option value="Card">Card</option>
+                    <option value="Mobile">Mobile</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Description</label>
+            <input type="text" id="descInput" placeholder="Item name...">
+        </div>
+
+        <button class="btn-save" onclick="saveExpense()">Save Transaction</button>
+        <button class="btn-close" onclick="closeModal()">Cancel</button>
+    </div>
+</div>
+
+<script>
+    // 1. STATE MANAGEMENT
+    let expenses = JSON.parse(localStorage.getItem('expenses')) || [];
+    let monthlyBudget = parseFloat(localStorage.getItem('monthlyBudget')) || 0;
+
+    // 2. INITIALIZATION
+    window.onload = () => {
+        document.getElementById('dateInput').valueAsDate = new Date();
+        renderList();
+        calculateReports();
+    };
+
+    // 3. NEW: BUDGET FUNCTIONS
+    function setMonthlyBudget() {
+        const input = prompt("Enter your budget limit for this month (BDT):", monthlyBudget);
+        if (input !== null) {
+            const val = parseFloat(input);
+            if (!isNaN(val)) {
+                monthlyBudget = val;
+                localStorage.setItem('monthlyBudget', monthlyBudget);
+                calculateReports(); // Recalculate balance immediately
+            } else {
+                alert("Please enter a valid number.");
+            }
+        }
+    }
+
+    // 4. CORE EXPENSE FUNCTIONS
+    function openModal(isEdit = false) {
+        if(!isEdit) clearInputs();
+        document.getElementById('expenseModal').classList.add('active');
+    }
+
+    function closeModal() {
+        document.getElementById('expenseModal').classList.remove('active');
+    }
+
+    function saveExpense() {
+        const date = document.getElementById('dateInput').value;
+        const amount = parseFloat(document.getElementById('amountInput').value);
+        const category = document.getElementById('categoryInput').value;
+        const method = document.getElementById('methodInput').value;
+        const desc = document.getElementById('descInput').value;
+        const editIndex = document.getElementById('editIndex').value;
+
+        if (!date || isNaN(amount)) { alert("Please enter a valid amount"); return; }
+
+        const obj = { date, amount, category, method, desc };
+
+        if (editIndex !== "") {
+            expenses[editIndex] = obj;
+        } else {
+            expenses.push(obj);
+        }
+
+        saveToStorage();
+        renderList();
+        calculateReports();
+        closeModal();
+    }
+
+    function renderList() {
+        const container = document.getElementById('listContainer');
+        container.innerHTML = "";
+        
+        // Show newest first
+        const sorted = expenses.map((e, i) => ({...e, idx: i}))
+                               .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        sorted.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'transaction-item';
+            div.innerHTML = `
+                <div class="t-info">
+                    <h4>${item.desc || 'Expense'}</h4>
+                    <p>${item.date} • ${item.category} • ${item.method}</p>
+                </div>
+                <div style="display:flex; align-items:center;">
+                    <div class="t-amount">৳${item.amount.toFixed(0)}</div>
+                    <div class="t-actions">
+                        <button class="btn-icon-small btn-edit" onclick="prepEdit(${item.idx})"><i class="fas fa-pen"></i></button>
+                        <button class="btn-icon-small btn-del" onclick="del(${item.idx})"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    function prepEdit(index) {
+        const item = expenses[index];
+        document.getElementById('dateInput').value = item.date;
+        document.getElementById('amountInput').value = item.amount;
+        document.getElementById('categoryInput').value = item.category;
+        document.getElementById('methodInput').value = item.method;
+        document.getElementById('descInput').value = item.desc;
+        document.getElementById('editIndex').value = index;
+        openModal(true);
+    }
+
+    function del(index) {
+        if(confirm("Delete this expense?")) {
+            expenses.splice(index, 1);
+            saveToStorage();
+            renderList();
+            calculateReports();
+        }
+    }
+
+    function saveToStorage() { localStorage.setItem('expenses', JSON.stringify(expenses)); }
+    
+    function clearInputs() {
+        document.getElementById('amountInput').value = "";
+        document.getElementById('descInput').value = "";
+        document.getElementById('editIndex').value = "";
+        document.getElementById('dateInput').valueAsDate = new Date();
+    }
+
+    // 5. CALCULATIONS (Updated with Budget Logic)
+    function calculateReports() {
+        const now = new Date();
+        const startOfWeek = new Date(now);
+        startOfWeek.setDate(now.getDate() - now.getDay());
+        const todayStr = now.toISOString().split('T')[0];
+
+        let daily = 0, weekly = 0, monthly = 0, yearly = 0;
+
+        expenses.forEach(e => {
+            const date = new Date(e.date);
+            const amt = parseFloat(e.amount);
+            
+            // Daily
+            if(e.date === todayStr) daily += amt;
+            
+            // Weekly
+            if(date >= startOfWeek && date <= now) weekly += amt;
+            
+            // Monthly (Current Month Only)
+            if(date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear()) {
+                monthly += amt;
+            }
+            
+            // Yearly
+            if(date.getFullYear() === now.getFullYear()) yearly += amt;
+        });
+
+        // Update Stats Cards
+        document.getElementById('dailyTotal').innerText = "৳" + daily.toLocaleString();
+        document.getElementById('weeklyTotal').innerText = "৳" + weekly.toLocaleString();
+        document.getElementById('yearlyTotal').innerText = "৳" + yearly.toLocaleString();
+
+        // NEW: Update Budget Panel
+        const remaining = monthlyBudget - monthly;
+        
+        document.getElementById('budgetDisplay').innerText = "Budget: ৳" + monthlyBudget.toLocaleString();
+        document.getElementById('monthSpentDisplay').innerText = "৳" + monthly.toLocaleString();
+        
+        const balanceEl = document.getElementById('remainingBalance');
+        balanceEl.innerText = "৳" + remaining.toLocaleString();
+
+        // Visual Feedback (Red if over budget)
+        if(remaining < 0) {
+            document.querySelector('.budget-panel').style.background = "linear-gradient(135deg, #ef4444, #dc2626)";
+        } else {
+            document.querySelector('.budget-panel').style.background = "linear-gradient(135deg, #4f46e5, #6366f1)";
+        }
+    }
+
+    // 6. BACKUP & PDF
+    function backupData() {
+        const data = { expenses: expenses, budget: monthlyBudget };
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data));
+        const dl = document.createElement('a');
+        dl.setAttribute("href", dataStr);
+        dl.setAttribute("download", "backup_" + new Date().toISOString().slice(0,10) + ".json");
+        document.body.appendChild(dl);
+        dl.click();
+        dl.remove();
+    }
+
+    function triggerImport() { document.getElementById('fileInput').click(); }
+    
+    function importData(input) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            if(confirm("Restore data? This will overwrite current data.")) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    // Handle both old backup format (array) and new format (object)
+                    if(Array.isArray(data)) {
+                        expenses = data;
+                    } else {
+                        expenses = data.expenses || [];
+                        monthlyBudget = data.budget || 0;
+                        localStorage.setItem('monthlyBudget', monthlyBudget);
+                    }
+                    saveToStorage();
+                    renderList();
+                    calculateReports();
+                } catch(err) {
+                    alert("Invalid file format");
+                }
+            }
+        };
+        reader.readAsText(input.files[0]);
+    }
+    
+    function generatePDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        doc.text("Monthly Expense Report", 14, 20);
+        doc.setFontSize(10);
+        doc.text(`Budget: ${monthlyBudget} BDT`, 14, 28);
+        doc.autoTable({
+            startY: 35,
+            head: [['Date', 'Desc', 'Cat', 'Method', 'Amt']],
+            body: expenses.map(e => [e.date, e.desc, e.category, e.method, e.amount]),
+        });
+        doc.save("report.pdf");
+    }
+</script>
+</body>
+</html>
